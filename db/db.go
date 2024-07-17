@@ -66,7 +66,12 @@ func someAdditionalActions() {
 	if err != nil {
 		log.Fatalf("Error querying database: %v", err)
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
 
 	for rows.Next() {
 		fmt.Println(rows.Columns())
