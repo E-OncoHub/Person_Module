@@ -7,16 +7,11 @@ import (
 	"os"
 
 	_ "github.com/godror/godror"
-	"github.com/joho/godotenv"
 )
 
 var db *sql.DB
 
 func InitDB() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
 
 	dbParams := map[string]string{
 		"service":        os.Getenv("DB_SERVICE"),
@@ -28,7 +23,7 @@ func InitDB() {
 	}
 
 	// Construct the connection string with wallet location
-	db, err = sql.Open("godror", fmt.Sprintf(`user="%s" password="%s"
+	db, err := sql.Open("godror", fmt.Sprintf(`user="%s" password="%s"
 		connectString="tcps://%s:%s/%s?wallet_location=%s"
 		   `, dbParams["username"], dbParams["password"], dbParams["server"], dbParams["port"], dbParams["service"], dbParams["walletLocation"]))
 
