@@ -3,16 +3,14 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/sijms/go-ora/v2"
 	"log"
 	"os"
-
-	_ "github.com/godror/godror"
 )
 
-var db *sql.DB
+var DB *sql.DB
 
 func InitDB() {
-
 	dbParams := map[string]string{
 		"service":        os.Getenv("DB_SERVICE"),
 		"username":       os.Getenv("DB_USERNAME"),
@@ -22,58 +20,32 @@ func InitDB() {
 		"walletLocation": os.Getenv("WALLET_LOCATION"),
 	}
 
-	// Construct the connection string with wallet location
-	db, err := sql.Open("godror", fmt.Sprintf(`user="%s" password="%s"
-		connectString="tcps://%s:%s/%s?wallet_location=%s"
-		   `, dbParams["username"], dbParams["password"], dbParams["server"], dbParams["port"], dbParams["service"], dbParams["walletLocation"]))
+	connectionString := fmt.Sprintf(
+		"oracle://%s:%s@%s:%s/%s?TRACE FILE=trace.log&SSL=enable&SSL Verify=false&WALLET=%s",
+		dbParams["username"], dbParams["password"], dbParams["server"],
+		dbParams["port"], dbParams["service"], dbParams["walletLocation"],
+	)
 
+	var err error
+	DB, err = sql.Open("oracle", connectionString)
 	if err != nil {
-		panic(fmt.Errorf("error in sql.Open: %w", err))
+		log.Fatalf("Error opening database: %v", err)
 	}
-	defer func() {
-		err = db.Close()
-		if err != nil {
-			fmt.Println("Can't close connection: ", err)
-		}
-	}()
 
-	err = db.Ping()
+	err = DB.Ping()
 	if err != nil {
-		panic(fmt.Errorf("error pinging db: %w", err))
+		log.Fatalf("Error pinging database: %v", err)
 	}
 
 	fmt.Println("Successfully connected to the database!")
-
 }
 
 func CloseDB() {
-
-	err := db.Close()
-	if err != nil {
-		log.Fatalf("Error closing database: %v", err)
-	}
-	fmt.Println("Database connection closed.")
-}
-
-func someAdditionalActions() {
-	// Example of additional database actions
-	rows, err := db.Query("SELECT 2+3 FROM dual")
-	if err != nil {
-		log.Fatalf("Error querying database: %v", err)
-	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
+	if DB != nil {
+		err := DB.Close()
 		if err != nil {
-
+			log.Fatalf("Error closing database: %v", err)
 		}
-	}(rows)
-
-	for rows.Next() {
-		fmt.Println(rows.Columns())
-	}
-
-	err = rows.Err()
-	if err != nil {
-		log.Fatalf("Error processing rows: %v", err)
+		fmt.Println("Database connection closed.")
 	}
 }

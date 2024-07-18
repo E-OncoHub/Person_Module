@@ -1,7 +1,7 @@
 package models
 
 type Loc struct {
-	ID    int    `json:"id_loc"`
+	ID    int64  `json:"id_loc"`
 	Name  string `json:"name"`
-	IDJud int    `json:"id_jud"`
+	IDJud int64  `json:"id_jud"`
 }

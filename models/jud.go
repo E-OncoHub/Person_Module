@@ -1,6 +1,6 @@
 package models
 
 type Jud struct {
-	ID   int    `json:"id_jud"`
+	ID   int64  `json:"id_jud"`
 	Name string `json:"name"`
 }
