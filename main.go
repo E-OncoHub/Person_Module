@@ -19,6 +19,11 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())  // Log each request
 	e.Use(middleware.Recover()) // Recover from panics anywhere in the chain
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"https://labstack.com", "https://labstack.net"},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+		AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
+	}))
 	routes.RegisterRoutes(e)
 	e.Logger.Fatal(e.Start(":8080"))
 }

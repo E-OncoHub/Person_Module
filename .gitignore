@@ -75,3 +75,4 @@ Thumbs.db
 # Local development database
 *.sqlite
 *.sqlite3
+
