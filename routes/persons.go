@@ -12,9 +12,9 @@ func createPerson(context echo.Context) error {
 		return context.JSON(400, map[string]string{"message": "Invalid request"})
 	}
 
-	err = person.Create()
+	err = (&person).Create()
 	if err != nil {
-		return context.JSON(500, map[string]string{"message": "Internal server error"})
+		return context.JSON(500, map[string]string{"message": err.Error()})
 	}
 	return context.JSON(200, map[string]string{"message": "Person created"})
 }
