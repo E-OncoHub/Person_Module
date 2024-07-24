@@ -22,4 +22,8 @@ func (p *Person) Create() error {
 		return errors.New("error creating virtual address")
 	}
 	err = p.Address.CreateAddress()
+	if err != nil {
+		return errors.New("error creating address")
+	}
+	return nil
 }

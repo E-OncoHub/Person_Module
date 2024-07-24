@@ -7,6 +7,13 @@ type Address struct {
 }
 
 func (a *Address) CreateAddress() error {
-
+	err := a.Loc.Jud.CreateJud()
+	if err != nil {
+		return err
+	}
+	err = a.Loc.CreateLoc()
+	if err != nil {
+		return err
+	}
 	return nil
 }
