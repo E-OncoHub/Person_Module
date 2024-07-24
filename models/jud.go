@@ -2,8 +2,8 @@ package models
 
 import (
 	"database/sql"
-	"eoncohub.com/person_module/db"
 	"errors"
+	go_ora "github.com/sijms/go-ora/v2"
 )
 
 type Jud struct {
@@ -15,11 +15,15 @@ func (j *Jud) CreateJud(tx *sql.Tx) error {
 	err := tx.QueryRow("SELECT ID_JUD FROM JUD WHERE NAME = :1", j.Name).Scan(&j.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			_, err = db.DB.Exec("INSERT INTO JUD (ID_JUD, NAME) VALUES (JUD_SEQ.nextval, :1)", j.Name)
+			stmt, err := tx.Prepare("INSERT INTO JUD (ID_JUD, NAME) VALUES (JUD_SEQ.nextval, :1) RETURNING ID_JUD INTO :2")
 			if err != nil {
 				return err
 			}
-
+			defer stmt.Close()
+			_, err = stmt.Exec(j.Name, go_ora.Out{Dest: &j.ID})
+			if err != nil {
+				return err
+			}
 		} else {
 			return err
 		}
