@@ -1,25 +1,25 @@
 package models
 
 import (
-	"eoncohub.com/person_module/db"
+	"errors"
 	"time"
 )
 
 type Person struct {
-	ID               int       `json:"id_person"`
-	FirstName        string    `json:"f_name"`
-	LastName         string    `json:"l_name"`
-	CNP              string    `json:"cnp"`
-	BornDate         time.Time `json:"born_date"`
-	IDAddress        int       `json:"id_address"`
-	IDVirtualAddress int       `json:"id_virtual_address"`
+	IDPerson       int64          `json:"id_person"`
+	FName          string         `json:"f_name"`
+	LName          string         `json:"l_name"`
+	CNP            string         `json:"cnp"`
+	BornDate       time.Time      `json:"born_date"`
+	Address        Address        `json:"address"`
+	VirtualAddress VirtualAddress `json:"virtual_address"`
 }
 
-func GetPersonById(id int) (Person, error) {
-	var person Person
-	err := db.DB.QueryRow("SELECT id_person, f_name, l_name, cnp, born_date, id_address, id_virtual_address FROM PERSONS WHERE id_person = :1", id).Scan(&person.ID, &person.FirstName, &person.LastName, &person.CNP, &person.BornDate, &person.IDAddress, &person.IDVirtualAddress)
+func (p *Person) Create() error {
+
+	err := p.VirtualAddress.CreateVirtualAddress()
 	if err != nil {
-		return person, err
+		return errors.New("error creating virtual address")
 	}
-	return person, nil
+	err = p.Address.CreateAddress()
 }
