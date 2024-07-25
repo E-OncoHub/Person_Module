@@ -9,12 +9,12 @@ func createPerson(context echo.Context) error {
 	var person models.Person
 	err := context.Bind(&person)
 	if err != nil {
-		return context.JSON(400, map[string]string{"message": "Invalid request"})
+		return context.JSON(400, map[string]string{"error": "Invalid request"})
 	}
 
 	err = (&person).Create()
 	if err != nil {
-		return context.JSON(500, map[string]string{"message": err.Error()})
+		return context.JSON(500, map[string]string{"error": err.Error()})
 	}
 	return context.JSON(200, map[string]string{"message": "Person created"})
 }

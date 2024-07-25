@@ -3,9 +3,10 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/sijms/go-ora/v2"
 	"log"
 	"os"
+
+	_ "github.com/sijms/go-ora/v2"
 )
 
 var DB *sql.DB

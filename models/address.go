@@ -26,7 +26,6 @@ func (a *Address) CreateAddress(tx *sql.Tx) error {
 		return err
 	}
 	defer stmt.Close()
-
 	_, err = stmt.Exec(a.Loc.ID, a.Address, go_ora.Out{Dest: &a.IDAddress})
 	if err != nil {
 		return err
