@@ -13,7 +13,7 @@ type Loc struct {
 }
 
 func (l *Loc) CreateLoc(tx *sql.Tx) error {
-	err := tx.QueryRow("SELECT ID_LOC FROM LOC WHERE NAME = :1", l.Name).Scan(&l.ID)
+	err := tx.QueryRow("SELECT ID_LOC FROM LOC WHERE upper(NAME) = :1", l.Name).Scan(&l.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			stmt, err := tx.Prepare("INSERT INTO LOC (ID_LOC, NAME, ID_JUD) VALUES (LOC_SEQ.nextval, :1, :2) RETURNING ID_LOC INTO :3")

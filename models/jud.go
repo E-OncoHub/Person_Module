@@ -12,7 +12,7 @@ type Jud struct {
 }
 
 func (j *Jud) CreateJud(tx *sql.Tx) error {
-	err := tx.QueryRow("SELECT ID_JUD FROM JUD WHERE NAME = :1", j.Name).Scan(&j.ID)
+	err := tx.QueryRow("SELECT ID_JUD FROM JUD WHERE upper(NAME) = :1", j.Name).Scan(&j.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			stmt, err := tx.Prepare("INSERT INTO JUD (ID_JUD, NAME) VALUES (JUD_SEQ.nextval, :1) RETURNING ID_JUD INTO :2")
