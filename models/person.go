@@ -16,6 +16,33 @@ type Person struct {
 	VirtualAddress VirtualAddress `json:"virtual_address"`
 }
 
+func GetPerson(id int64) (Person, error) {
+	var p Person
+	err := db.DB.QueryRow(
+		`SELECT ID_PERSON,
+	       F_NAME,
+	       L_NAME,
+	       CNP,
+	       BORN_DATE,
+	       EMAIL,
+	       PHONE_NUMBER,
+	       ad.ADDRESS,
+	       l.NAME,
+	       j.NAME
+	from PERSONS
+	         join VIRTUAL_ADDRESS on PERSONS.ID_VIRTUAL_ADDRESS = VIRTUAL_ADDRESS.ID_VIRTUAL_ADDRESS
+	         join ADDRESS Ad on PERSONS.ID_ADDRESS = Ad.ID_ADDRESS
+	         join Loc l on Ad.ID_LOC = l.ID_LOC
+	         join Jud j on l.ID_JUD = j.ID_JUD
+	where DATE_OUT is null
+	 and ID_PERSON = :1
+	`, id).Scan(&p.IDPerson, &p.FName, &p.LName, &p.CNP, &p.BornDate, &p.VirtualAddress.Email, &p.VirtualAddress.PhoneNumber, &p.Address.Address, &p.Address.Loc.Name, &p.Address.Loc.Jud.Name)
+	if err != nil {
+		return Person{}, err
+	}
+	return p, nil
+}
+
 func (p *Person) Create() error {
 	tx, err := db.DB.Begin()
 	if err != nil {

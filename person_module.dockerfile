@@ -6,7 +6,7 @@ COPY . /app
 
 WORKDIR /app
 
-RUN CGO_ENABLED=0 go build -o person_module
+RUN go build -x -o person_module .
 
 
 #BUILD a tiny docker image
