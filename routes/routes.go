@@ -7,4 +7,5 @@ func RegisterRoutes(server *echo.Echo) {
 	server.POST("/person/create", createPerson)
 	server.GET("/person/:id", getPerson)
 	server.PUT("/person/update/:id", updatePerson)
+	server.DELETE("/person/delete/:id", deletePerson)
 }

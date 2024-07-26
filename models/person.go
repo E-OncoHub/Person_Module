@@ -1,10 +1,15 @@
 package models
 
 import (
+	"database/sql"
 	"eoncohub.com/person_module/db"
+	"eoncohub.com/person_module/utils"
 	"errors"
+	"fmt"
 	"time"
 )
+
+var ErrPersonNotFound = errors.New("person not found or already expired")
 
 type Person struct {
 	IDPerson       int64          `json:"id_person"`
@@ -84,35 +89,142 @@ func (p *Person) Update() error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
 
-	// Update virtual address
-	err = p.VirtualAddress.UpdateVirtualAddress(tx)
-	if err != nil {
-		tx.Rollback()
-		return errors.New("error updating virtual address: " + err.Error())
+	if !utils.IsEmptyStruct(p.VirtualAddress) {
+		var currentVirtualAddressID int64
+		err = tx.QueryRow("SELECT ID_VIRTUAL_ADDRESS FROM PERSONS WHERE ID_PERSON = :1", p.IDPerson).Scan(&currentVirtualAddressID)
+		if err != nil {
+			return fmt.Errorf("error getting current virtual address ID: %w", err)
+		}
+		p.VirtualAddress.ID = currentVirtualAddressID
+		err = p.VirtualAddress.UpdateVirtualAddress(tx)
+		if err != nil {
+			return fmt.Errorf("error updating virtual address: %w", err)
+		}
+
+		_, err = tx.Exec("UPDATE PERSONS SET ID_VIRTUAL_ADDRESS = :1 WHERE ID_PERSON = :2", p.VirtualAddress.ID, p.IDPerson)
+		if err != nil {
+			return fmt.Errorf("error updating person's virtual address reference: %w", err)
+		}
 	}
 
-	// Update address
-	err = p.Address.UpdateAddress(tx)
-	if err != nil {
-		tx.Rollback()
-		return errors.New("error updating address: " + err.Error())
+	if !utils.IsEmptyStruct(p.Address) {
+		var currentAddressID int64
+		err = tx.QueryRow("SELECT ID_ADDRESS FROM PERSONS WHERE ID_PERSON = :1", p.IDPerson).Scan(&currentAddressID)
+		if err != nil {
+			return fmt.Errorf("error getting current address ID: %w", err)
+		}
+		p.Address.IDAddress = currentAddressID
+		err = p.Address.UpdateAddress(tx)
+		if err != nil {
+			return fmt.Errorf("error updating address: %w", err)
+		}
+
+		// Update the PERSONS table with the new address ID
+		_, err = tx.Exec("UPDATE PERSONS SET ID_ADDRESS = :1 WHERE ID_PERSON = :2", p.Address.IDAddress, p.IDPerson)
+		if err != nil {
+			return fmt.Errorf("error updating person's address reference: %w", err)
+		}
 	}
 
-	_, err = tx.Exec(`
-        UPDATE PERSONS 
-        SET f_name = :1, l_name = :2, cnp = :3, born_date = :4 
-        WHERE id_person = :5
-    `, p.FName, p.LName, p.CNP, p.BornDate, p.IDPerson)
-	if err != nil {
-		tx.Rollback()
-		return err
+	// Update person fields
+	updateQuery := "UPDATE PERSONS SET "
+	updateParams := []interface{}{}
+	paramCount := 1
+
+	if p.FName != "" {
+		updateQuery += fmt.Sprintf("f_name = :%d, ", paramCount)
+		updateParams = append(updateParams, p.FName)
+		paramCount++
+	}
+	if p.LName != "" {
+		updateQuery += fmt.Sprintf("l_name = :%d, ", paramCount)
+		updateParams = append(updateParams, p.LName)
+		paramCount++
+	}
+	if p.CNP != "" {
+		updateQuery += fmt.Sprintf("cnp = :%d, ", paramCount)
+		updateParams = append(updateParams, p.CNP)
+		paramCount++
+	}
+	if !p.BornDate.IsZero() {
+		updateQuery += fmt.Sprintf("born_date = :%d, ", paramCount)
+		updateParams = append(updateParams, p.BornDate)
+		paramCount++
 	}
 
+	// Remove trailing comma and space
+	updateQuery = updateQuery[:len(updateQuery)-2]
+	updateQuery += fmt.Sprintf(" WHERE id_person = :%d", paramCount)
+	updateParams = append(updateParams, p.IDPerson)
+
+	// Execute the update only if there are fields to update
+	if len(updateParams) > 1 { // More than just the ID
+		_, err = tx.Exec(updateQuery, updateParams...)
+		if err != nil {
+			return fmt.Errorf("error updating person: %w", err)
+		}
+	}
 	err = tx.Commit()
 	if err != nil {
-		tx.Rollback()
-		return err
+		return fmt.Errorf("error committing transaction: %w", err)
 	}
 	return nil
+}
+
+func DeletePerson(personID int64) error {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// Get and delete virtual address
+	var virtualAddressID int64
+	err = tx.QueryRow("SELECT ID_VIRTUAL_ADDRESS FROM PERSONS WHERE ID_PERSON = :1", personID).Scan(&virtualAddressID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ErrPersonNotFound
+		}
+		return err
+	}
+
+	// Get and delete address
+	var addressID int64
+	err = tx.QueryRow("SELECT ID_ADDRESS FROM PERSONS WHERE ID_PERSON = :1", personID).Scan(&addressID)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	// Delete the person record
+	result, err := tx.Exec("DELETE FROM PERSONS WHERE ID_PERSON = :1", personID)
+	if err != nil {
+		return err
+	}
+
+	if addressID != 0 {
+		_, err = tx.Exec("DELETE FROM ADDRESS WHERE ID_ADDRESS = :1", addressID)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec("DELETE FROM VIRTUAL_ADDRESS WHERE ID_VIRTUAL_ADDRESS = :1", virtualAddressID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrPersonNotFound
+	}
+
+	return tx.Commit()
 }

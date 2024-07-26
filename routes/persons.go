@@ -3,6 +3,7 @@ package routes
 import (
 	"eoncohub.com/person_module/models"
 	"github.com/labstack/echo/v4"
+	"net/http"
 	"strconv"
 )
 
@@ -33,7 +34,6 @@ func getPerson(context echo.Context) error {
 	return context.JSON(200, person)
 }
 
-// In persons.go
 func updatePerson(context echo.Context) error {
 	// Parse the person ID from the URL
 	id := context.Param("id")
@@ -58,4 +58,24 @@ func updatePerson(context echo.Context) error {
 	}
 
 	return context.JSON(200, map[string]string{"message": "Person updated successfully"})
+}
+
+func deletePerson(c echo.Context) error {
+	// Parse the person ID from the URL
+	id := c.Param("id")
+	personID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid person ID"})
+	}
+
+	// Call the model function to delete the person
+	err = models.DeletePerson(personID)
+	if err != nil {
+		if err == models.ErrPersonNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Person not found or already expired"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error deleting person: " + err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Person deleted successfully"})
 }

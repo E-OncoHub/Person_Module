@@ -2,7 +2,7 @@ package models
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 	go_ora "github.com/sijms/go-ora/v2"
 	"time"
 )
@@ -17,6 +17,7 @@ type VirtualAddress struct {
 
 func (v *VirtualAddress) CreateVirtualAddress(tx *sql.Tx) error {
 	var id int64
+	v.DateIn = time.Now()
 	stmt, err := tx.Prepare("INSERT INTO virtual_address (ID_VIRTUAL_ADDRESS, email, phone_number, date_in) VALUES (VIRTUAL_ADDRESS_SEQ.nextval, :1, :2, :3) RETURNING ID_VIRTUAL_ADDRESS INTO :4")
 	if err != nil {
 		return err
@@ -35,47 +36,37 @@ func (v *VirtualAddress) CreateVirtualAddress(tx *sql.Tx) error {
 	return nil
 }
 func (v *VirtualAddress) UpdateVirtualAddress(tx *sql.Tx) error {
-	// Check if VirtualAddress exists
-	var exists bool
-	err := tx.QueryRow("SELECT 1 FROM VIRTUAL_ADDRESS WHERE ID_VIRTUAL_ADDRESS = :1", v.ID).Scan(&exists)
+	// First, expire the old record
+	_, err := tx.Exec(`
+        UPDATE VIRTUAL_ADDRESS 
+        SET DATE_OUT = SYSDATE 
+        WHERE ID_VIRTUAL_ADDRESS = :1 AND DATE_OUT IS NULL
+    `, v.ID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// If not exists, create new VirtualAddress
-			return v.CreateVirtualAddress(tx)
-		}
-		return err
+		return fmt.Errorf("error expiring old virtual address: %w", err)
 	}
 
-	// If exists, update the VirtualAddress
+	// Now, create a new record
 	stmt, err := tx.Prepare(`
-        UPDATE VIRTUAL_ADDRESS 
-        SET EMAIL = :1, PHONE_NUMBER = :2, DATE_OUT = :3 
-        WHERE ID_VIRTUAL_ADDRESS = :4
+        INSERT INTO VIRTUAL_ADDRESS (ID_VIRTUAL_ADDRESS, EMAIL, PHONE_NUMBER, DATE_IN) 
+        VALUES (VIRTUAL_ADDRESS_SEQ.nextval, :1, :2, SYSDATE) 
+        RETURNING ID_VIRTUAL_ADDRESS INTO :3
     `)
 	if err != nil {
-		return err
+		return fmt.Errorf("error preparing statement for new virtual address: %w", err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(v.Email, v.PhoneNumber, v.DateOut, v.ID)
+	var newID int64
+	_, err = stmt.Exec(v.Email, v.PhoneNumber, go_ora.Out{Dest: &newID})
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating new virtual address: %w", err)
 	}
 
-	// If DateOut is set, create a new active VirtualAddress
-	if !v.DateOut.IsZero() {
-		newVA := VirtualAddress{
-			Email:       v.Email,
-			PhoneNumber: v.PhoneNumber,
-			DateIn:      time.Now(),
-		}
-		err = newVA.CreateVirtualAddress(tx)
-		if err != nil {
-			return err
-		}
-		// Update the ID to the new VirtualAddress
-		v.ID = newVA.ID
-	}
+	// Update the ID in the struct to reflect the new record
+	v.ID = newID
+	v.DateIn = time.Now()
+	v.DateOut = time.Time{} // Reset DateOut as it's a new record
 
 	return nil
 }

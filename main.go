@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"net/http"
 )
 
 func main() {
@@ -17,12 +18,13 @@ func main() {
 	db.InitDB()
 	defer db.CloseDB()
 	e := echo.New()
-	e.Use(middleware.Logger())  // Log each request
-	e.Use(middleware.Recover()) // Recover from panics anywhere in the chain
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"https://labstack.com", "https://labstack.net"},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
-		AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
+		AllowOrigins:     []string{"*"},
+		AllowHeaders:     []string{"*"},
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+		AllowCredentials: true,
 	}))
 	routes.RegisterRoutes(e)
 	e.Logger.Fatal(e.Start(":8080"))
