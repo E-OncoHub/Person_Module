@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	go_ora "github.com/sijms/go-ora/v2"
 )
 
@@ -27,6 +28,37 @@ func (a *Address) CreateAddress(tx *sql.Tx) error {
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(a.Loc.ID, a.Address, go_ora.Out{Dest: &a.IDAddress})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+func (a *Address) UpdateAddress(tx *sql.Tx) error {
+	err := a.Loc.UpdateLoc(tx)
+	if err != nil {
+		return err
+	}
+
+	// Check if Address exists
+	var exists bool
+	err = tx.QueryRow("SELECT 1 FROM ADDRESS WHERE ID_ADDRESS = :1", a.IDAddress).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// If not exists, create new Address
+			return a.CreateAddress(tx)
+		}
+		return err
+	}
+
+	// If exists, update the Address
+	stmt, err := tx.Prepare("UPDATE ADDRESS SET ID_LOC = :1, ADDRESS = :2 WHERE ID_ADDRESS = :3")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(a.Loc.ID, a.Address, a.IDAddress)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	go_ora "github.com/sijms/go-ora/v2"
 	"time"
 )
@@ -31,5 +32,50 @@ func (v *VirtualAddress) CreateVirtualAddress(tx *sql.Tx) error {
 		return err
 	}
 	v.ID = id
+	return nil
+}
+func (v *VirtualAddress) UpdateVirtualAddress(tx *sql.Tx) error {
+	// Check if VirtualAddress exists
+	var exists bool
+	err := tx.QueryRow("SELECT 1 FROM VIRTUAL_ADDRESS WHERE ID_VIRTUAL_ADDRESS = :1", v.ID).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// If not exists, create new VirtualAddress
+			return v.CreateVirtualAddress(tx)
+		}
+		return err
+	}
+
+	// If exists, update the VirtualAddress
+	stmt, err := tx.Prepare(`
+        UPDATE VIRTUAL_ADDRESS 
+        SET EMAIL = :1, PHONE_NUMBER = :2, DATE_OUT = :3 
+        WHERE ID_VIRTUAL_ADDRESS = :4
+    `)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(v.Email, v.PhoneNumber, v.DateOut, v.ID)
+	if err != nil {
+		return err
+	}
+
+	// If DateOut is set, create a new active VirtualAddress
+	if !v.DateOut.IsZero() {
+		newVA := VirtualAddress{
+			Email:       v.Email,
+			PhoneNumber: v.PhoneNumber,
+			DateIn:      time.Now(),
+		}
+		err = newVA.CreateVirtualAddress(tx)
+		if err != nil {
+			return err
+		}
+		// Update the ID to the new VirtualAddress
+		v.ID = newVA.ID
+	}
+
 	return nil
 }

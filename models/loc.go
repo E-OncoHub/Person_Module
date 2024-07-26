@@ -32,3 +32,21 @@ func (l *Loc) CreateLoc(tx *sql.Tx) error {
 	}
 	return nil
 }
+func (l *Loc) UpdateLoc(tx *sql.Tx) error {
+	err := l.Jud.UpdateJud(tx)
+	if err != nil {
+		return err
+	}
+
+	var existingID int64
+	err = tx.QueryRow("SELECT ID_LOC FROM LOC WHERE upper(NAME) = :1 AND ID_JUD = :2", l.Name, l.Jud.ID).Scan(&existingID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return l.CreateLoc(tx)
+		}
+		return err
+	}
+
+	l.ID = existingID
+	return nil
+}

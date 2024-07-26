@@ -71,12 +71,48 @@ func (p *Person) Create() error {
 
 		return err
 	}
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func (p *Person) Update() error {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Update virtual address
+	err = p.VirtualAddress.UpdateVirtualAddress(tx)
+	if err != nil {
+		tx.Rollback()
+		return errors.New("error updating virtual address: " + err.Error())
+	}
+
+	// Update address
+	err = p.Address.UpdateAddress(tx)
+	if err != nil {
+		tx.Rollback()
+		return errors.New("error updating address: " + err.Error())
+	}
+
+	_, err = tx.Exec(`
+        UPDATE PERSONS 
+        SET f_name = :1, l_name = :2, cnp = :3, born_date = :4 
+        WHERE id_person = :5
+    `, p.FName, p.LName, p.CNP, p.BornDate, p.IDPerson)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	err = tx.Commit()
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-
 	return nil
 }

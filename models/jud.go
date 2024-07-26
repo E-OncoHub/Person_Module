@@ -30,3 +30,16 @@ func (j *Jud) CreateJud(tx *sql.Tx) error {
 	}
 	return nil
 }
+func (j *Jud) UpdateJud(tx *sql.Tx) error {
+	var existingID int64
+	err := tx.QueryRow("SELECT ID_JUD FROM JUD WHERE upper(NAME) = :1", j.Name).Scan(&existingID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return j.CreateJud(tx)
+		}
+		return err
+	}
+
+	j.ID = existingID
+	return nil
+}
