@@ -22,7 +22,7 @@ func InitDB() {
 	}
 
 	connectionString := fmt.Sprintf(
-		"oracle://%s:%s@%s:%s/%s?TRACE FILE=trace.log&SSL=enable&SSL Verify=false&WALLET=%s",
+		"oracle://%s:%s@%s:%s/%s?SSL=enable&SSL Verify=false&WALLET=%s",
 		dbParams["username"], dbParams["password"], dbParams["server"],
 		dbParams["port"], dbParams["service"], dbParams["walletLocation"],
 	)
