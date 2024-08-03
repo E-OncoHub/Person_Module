@@ -1,16 +1,20 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
+
 	"eoncohub.com/person_module/db"
 	"eoncohub.com/person_module/routes"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-	"net/http"
 )
 
 func main() {
+	fmt.Println("Person module is starting...")
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
