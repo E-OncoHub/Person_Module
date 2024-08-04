@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	_ "github.com/sijms/go-ora/v2"
 )
@@ -32,7 +33,10 @@ func InitDB() {
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
-
+	// Set connection pool parameters
+	DB.SetMaxOpenConns(25)                 // Set the maximum number of open connections
+	DB.SetMaxIdleConns(25)                 // Set the maximum number of idle connections
+	DB.SetConnMaxLifetime(5 * time.Minute) // Set the maximum amount of time a connection may be reused
 	err = DB.Ping()
 	if err != nil {
 		log.Fatalf("Error pinging database: %v", err)
