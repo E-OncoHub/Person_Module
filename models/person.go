@@ -2,11 +2,12 @@ package models
 
 import (
 	"database/sql"
-	"eoncohub.com/person_module/db"
-	"eoncohub.com/person_module/utils"
 	"errors"
 	"fmt"
 	"time"
+
+	"eoncohub.com/person_module/db"
+	"eoncohub.com/person_module/utils"
 )
 
 var ErrPersonNotFound = errors.New("person not found or already expired")
