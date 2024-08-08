@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	go_ora "github.com/sijms/go-ora/v2"
 	"time"
 
 	"eoncohub.com/person_module/db"
@@ -54,34 +55,48 @@ func (p *Person) Create() error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback() // This will be a no-op if the tx has been committed later
 
 	// Create virtual address within the same transaction
 	err = (&p.VirtualAddress).CreateVirtualAddress(tx)
 	if err != nil {
-		tx.Rollback()
 		return errors.New("error creating virtual address: " + err.Error())
 	}
 
 	// Create address within the same transaction
 	err = (&p.Address).CreateAddress(tx)
 	if err != nil {
-		tx.Rollback()
-
 		return errors.New("error creating address: " + err.Error())
 	}
 
-	// Insert person within the same transaction
-	_, err = tx.Exec("INSERT INTO PERSONS (id_person, f_name, l_name, cnp, born_date, id_address, id_virtual_address) VALUES (PERSONS_SEQ.nextval, :1, :2, :3, :4, :5, :6)", p.FName, p.LName, p.CNP, p.BornDate, p.Address.IDAddress, p.VirtualAddress.ID)
+	// Prepare the statement
+	stmt, err := tx.Prepare(`
+        INSERT INTO PERSONS (id_person, f_name, l_name, cnp, born_date, id_address, id_virtual_address) 
+        VALUES (PERSONS_SEQ.nextval, :1, :2, :3, :4, :5, :6)
+        RETURNING id_person INTO :7`)
 	if err != nil {
-		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
 
-		return err
-	}
-	err = tx.Commit()
+	// Register the output parameter
+	var newID int64
+	_, err = stmt.Exec(
+		p.FName, p.LName, p.CNP, p.BornDate, p.Address.IDAddress, p.VirtualAddress.ID,
+		go_ora.Out{Dest: &newID, In: false},
+	)
 	if err != nil {
-		tx.Rollback()
-		return err
+		return errors.New("error inserting person: " + err.Error())
 	}
+
+	// Set the new ID to the Person struct
+	p.IDPerson = newID
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return errors.New("error committing transaction: " + err.Error())
+	}
+
 	return nil
 }
 

@@ -18,7 +18,7 @@ func createPerson(context echo.Context) error {
 	if err != nil {
 		return context.JSON(500, map[string]string{"error": err.Error()})
 	}
-	return context.JSON(200, map[string]string{"message": "Person created"})
+	return context.JSON(200, map[string]any{"id_person": person.IDPerson})
 }
 
 func getPerson(context echo.Context) error {
